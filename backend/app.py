@@ -91,5 +91,8 @@ def handle_message(data):
         'timestamp': msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')
     }, broadcast=True)
 
+import os
+
 if __name__ == '__main__':
-    socketio.run(app)
+    port = int(os.environ.get("PORT", 10000))  # Default to 10000 if PORT not set
+    socketio.run(app, host="0.0.0.0", port=port)
