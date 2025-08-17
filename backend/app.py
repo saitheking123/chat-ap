@@ -11,14 +11,21 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 
+# --- MySQL / SQLAlchemy ---
+DB_USER = 'avnadmin'
+DB_PASSWORD = os.getenv('DB_PASSWORD')  # make sure this is set in Render environment variables
+DB_HOST = 'saidata-colimarl-14a4.c.aivencloud.com'
+DB_PORT = 18883
+DB_NAME = 'defaultdb'
+
+# Add SSL options for Aiven
 app.config['SQLALCHEMY_DATABASE_URI'] = (
-    f"mysql+pymysql://avnadmin:{os.getenv('DB_PASSWORD')}@"
-    "saidata-colimarl-14a4.c.aivencloud.com:18883/defaultdb?charset=utf8mb4"
+    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    "?charset=utf8mb4&ssl_ca=/etc/ssl/certs/ca-certificates.crt"
 )
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB max
-
 
 db = SQLAlchemy(app)
 socketio = SocketIO(app, cors_allowed_origins='*')
@@ -28,7 +35,7 @@ class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user = db.Column(db.String(64))
     text = db.Column(db.Text, nullable=True)
-    image_data = db.Column(db.LargeBinary, nullable=True)  # store image as BLOB
+    image_data = db.Column(db.LargeBinary, nullable=True)
     image_mime = db.Column(db.String(50), nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -46,7 +53,6 @@ def index():
 
 @app.route('/image/<int:msg_id>')
 def get_image(msg_id):
-    """Serve image stored in DB by message ID."""
     msg = Message.query.get_or_404(msg_id)
     if msg.image_data:
         return send_file(BytesIO(msg.image_data),
@@ -92,7 +98,6 @@ def history():
         })
     return jsonify(result)
 
-# --- SocketIO events ---
 @socketio.on('message')
 def handle_message(data):
     user = data.get('user', 'Anonymous')
@@ -109,7 +114,6 @@ def handle_message(data):
     }
     emit('message', payload, broadcast=True)
 
-# --- Main ---
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     socketio.run(app, host="0.0.0.0", port=port)
