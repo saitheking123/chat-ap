@@ -17,6 +17,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = (
 )
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB max
+
 
 db = SQLAlchemy(app)
 socketio = SocketIO(app, cors_allowed_origins='*')

@@ -1,5 +1,7 @@
 Flask
-flask-socketio
+Flask-SocketIO
+Flask-SQLAlchemy
+pymysql
+python-dotenv
 eventlet
-Werkzeug
-Flask_SQLAlchemy
+cryptography
