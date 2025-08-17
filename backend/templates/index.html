@@ -165,23 +165,25 @@
         <button id="send" type="submit">➤</button>
     </form>
 </div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
 <script>
-    // Connect to your hosted server
-    var socket = io('https://chat-ap-43mk.onrender.com/'); // ← change this
+    // Connect to your Render server
+    var socket = io('https://chat-ap-43mk.onrender.com', { transports: ['websocket'] });
+
     var messages = document.getElementById('messages');
     var input = document.getElementById('input');
     var form = document.getElementById('input-area');
     var me = localStorage.getItem('chatuser') || prompt("Enter your name:") || "Anonymous";
     localStorage.setItem('chatuser', me);
 
-    // Load history
-    fetch('/history').then(r => r.json()).then(function(data) {
-        data.forEach(function(m) {
-            addMessage(m);
+    // Load chat history
+    fetch('/history')
+        .then(r => r.json())
+        .then(function(data) {
+            data.forEach(addMessage);
+            messages.scrollTop = messages.scrollHeight;
         });
-        messages.scrollTop = messages.scrollHeight;
-    });
 
     function initials(name) {
         return name ? name.split(' ').map(s => s[0].toUpperCase()).join('').slice(0,2) : "?";
@@ -190,9 +192,11 @@
     function addMessage(m) {
         var row = document.createElement('div');
         row.className = 'msg-row' + (m.user === me ? ' me' : ' notme');
+
         var avatar = document.createElement('div');
         avatar.className = 'avatar';
         avatar.textContent = initials(m.user);
+
         var bubble = document.createElement('div');
         bubble.className = 'msg-bubble';
         if (m.text) bubble.textContent = m.text;
@@ -203,6 +207,7 @@
             bubble.textContent = '';
             bubble.appendChild(img);
         }
+
         if (m.user === me) {
             row.appendChild(bubble);
             row.appendChild(avatar);
@@ -210,6 +215,7 @@
             row.appendChild(avatar);
             row.appendChild(bubble);
         }
+
         messages.appendChild(row);
         messages.scrollTop = messages.scrollHeight;
     }
@@ -222,26 +228,23 @@
         }
     };
 
-    socket.on('message', function(m) {
-        addMessage(m);
-    });
+    socket.on('message', addMessage);
 
     // Image upload
     document.getElementById('image-upload-btn').onclick = function(e) {
         e.preventDefault();
         document.getElementById('image-upload').click();
     };
+
     document.getElementById('image-upload').onchange = function() {
         var fileInput = this;
-        if (fileInput.files.length === 0) return;
+        if (!fileInput.files.length) return;
         var formData = new FormData();
         formData.append('file', fileInput.files[0]);
         formData.append('user', me);
-        fetch('/upload', {
-            method: 'POST',
-            body: formData
-        }).then(() => {
-            fileInput.value = '';
-        });
+        fetch('/upload', { method: 'POST', body: formData })
+            .then(() => fileInput.value = '');
     };
 </script>
+</body>
+</html>

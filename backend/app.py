@@ -5,6 +5,9 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from io import BytesIO
+import eventlet
+
+eventlet.monkey_patch()  # Fix for WebSockets with eventlet
 
 # --- Config ---
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -13,7 +16,7 @@ app.config['SECRET_KEY'] = 'secret!'
 
 # --- MySQL / SQLAlchemy ---
 DB_USER = 'avnadmin'
-DB_PASSWORD = os.getenv('DB_PASSWORD')  # make sure this is set in Render environment variables
+DB_PASSWORD = os.getenv('DB_PASSWORD')  # Render env variable
 DB_HOST = 'saidata-colimarl-14a4.c.aivencloud.com'
 DB_PORT = 18883
 DB_NAME = 'defaultdb'
@@ -26,7 +29,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB max
 
 db = SQLAlchemy(app)
-socketio = SocketIO(app, cors_allowed_origins='*')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")  # Use eventlet
 
 # --- Models ---
 class Message(db.Model):
