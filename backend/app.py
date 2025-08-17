@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()  # MUST b
+
 import os
 from flask import Flask, render_template, request, send_file, jsonify
 from flask_socketio import SocketIO, emit
@@ -5,9 +8,8 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from io import BytesIO
-import eventlet
 
-eventlet.monkey_patch()  # Fix for WebSockets with eventlet
+  # Fix for WebSockets with eventlet
 
 # --- Config ---
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
