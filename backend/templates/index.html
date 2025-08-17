@@ -30,6 +30,19 @@
             color: #fff;
             border-radius: 18px 18px 0 0;
             letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #history-btn {
+            background: #fff;
+            color: #0084ff;
+            border: none;
+            border-radius: 12px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9em;
         }
         #messages {
             flex: 1;
@@ -156,7 +169,10 @@
 </head>
 <body>
 <div id="chat">
-    <div id="header">sai-Style Chat</div>
+    <div id="header">
+        sai-Style Chat
+        <button id="history-btn">History</button>
+    </div>
     <div id="messages"></div>
     <form id="input-area" autocomplete="off">
         <label for="image-upload" id="image-upload-btn" title="Send image">📷</label>
@@ -168,22 +184,12 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
 <script>
-    // Connect to your Render server
     var socket = io('https://chat-ap-43mk.onrender.com', { transports: ['websocket'] });
-
     var messages = document.getElementById('messages');
     var input = document.getElementById('input');
     var form = document.getElementById('input-area');
     var me = localStorage.getItem('chatuser') || prompt("Enter your name:") || "Anonymous";
     localStorage.setItem('chatuser', me);
-
-    // Load chat history
-    fetch('/history')
-        .then(r => r.json())
-        .then(function(data) {
-            data.forEach(addMessage);
-            messages.scrollTop = messages.scrollHeight;
-        });
 
     function initials(name) {
         return name ? name.split(' ').map(s => s[0].toUpperCase()).join('').slice(0,2) : "?";
@@ -230,7 +236,6 @@
 
     socket.on('message', addMessage);
 
-    // Image upload
     document.getElementById('image-upload-btn').onclick = function(e) {
         e.preventDefault();
         document.getElementById('image-upload').click();
@@ -244,6 +249,16 @@
         formData.append('user', me);
         fetch('/upload', { method: 'POST', body: formData })
             .then(() => fileInput.value = '');
+    };
+
+    // --- History button ---
+    document.getElementById('history-btn').onclick = function() {
+        fetch('/history')
+            .then(res => res.json())
+            .then(data => {
+                messages.innerHTML = ''; // clear current chat
+                data.forEach(addMessage);
+            });
     };
 </script>
 </body>
