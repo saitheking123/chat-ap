@@ -1,65 +1,79 @@
 import os
-from flask import Flask, render_template, request, send_from_directory, url_for, jsonify
+from flask import Flask, render_template, request, send_file, jsonify
 from flask_socketio import SocketIO, emit
-from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.utils import secure_filename
 from datetime import datetime
+from io import BytesIO
 
-UPLOAD_FOLDER = 'uploads'
+# --- Config ---
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
+
+# Use your external MySQL (Aiven in this case)
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    "mysql+pymysql://avnadmin:AVNS_y0u5KAzmwb8QQPbGSxN@"
+    "saidata-colimarl-14a4.c.aivencloud.com:18883/defaultdb?charset=utf8mb4"
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 socketio = SocketIO(app, cors_allowed_origins='*')
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
+# --- Models ---
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user = db.Column(db.String(64))
-    text = db.Column(db.Text)
-    image_url = db.Column(db.String(256))
+    text = db.Column(db.Text, nullable=True)
+    image_data = db.Column(db.LargeBinary, nullable=True)  # store image as BLOB
+    image_mime = db.Column(db.String(50), nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
+# --- Helpers ---
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 with app.app_context():
     db.create_all()
 
+# --- Routes ---
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+@app.route('/image/<int:msg_id>')
+def get_image(msg_id):
+    """Serve image stored in DB by message ID."""
+    msg = Message.query.get_or_404(msg_id)
+    if msg.image_data:
+        return send_file(BytesIO(msg.image_data),
+                         mimetype=msg.image_mime,
+                         as_attachment=False,
+                         download_name=f"image_{msg.id}")
+    return "No image", 404
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
     file = request.files.get('file')
-    user = request.form.get('user','Anonymous')
+    user = request.form.get('user', 'Anonymous')
     if file and allowed_file(file.filename):
-        filename = secure_filename(f"{datetime.utcnow().timestamp()}_{file.filename}")
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-        image_url = url_for('uploaded_file', filename=filename)
-        # Save image as a message with only image_url
-        msg = Message(user=user, text=None, image_url=image_url)
+        filename = secure_filename(file.filename)
+        image_data = file.read()
+        image_mime = file.mimetype
+
+        msg = Message(user=user, text=None, image_data=image_data, image_mime=image_mime)
         db.session.add(msg)
         db.session.commit()
-        # Send to all clients
-        socketio.emit('message', {
+
+        image_url = f"/image/{msg.id}"
+        payload = {
             'user': user,
             'text': None,
             'image_url': image_url,
             'timestamp': msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-        })
+        }
+        socketio.emit('message', payload, broadcast=True)
         return '', 204
     return '', 400
 
@@ -71,28 +85,29 @@ def history():
         result.append({
             'user': m.user,
             'text': m.text,
-            'image_url': m.image_url,
+            'image_url': f"/image/{m.id}" if m.image_data else None,
             'timestamp': m.timestamp.strftime('%Y-%m-%d %H:%M:%S')
         })
     return jsonify(result)
 
+# --- SocketIO events ---
 @socketio.on('message')
 def handle_message(data):
-    # data is expected to be dict: {user:..., text:...}
     user = data.get('user', 'Anonymous')
     text = data.get('text')
-    msg = Message(user=user, text=text, image_url=None)
+    msg = Message(user=user, text=text)
     db.session.add(msg)
     db.session.commit()
-    emit('message', {
+
+    payload = {
         'user': user,
         'text': text,
         'image_url': None,
         'timestamp': msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-    }, broadcast=True)
+    }
+    emit('message', payload, broadcast=True)
 
-import os
-
+# --- Main ---
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))  # Default to 10000 if PORT not set
+    port = int(os.environ.get("PORT", 10000))
     socketio.run(app, host="0.0.0.0", port=port)
