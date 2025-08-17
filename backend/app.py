@@ -11,11 +11,11 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 
-# Use your external MySQL (Aiven in this case)
 app.config['SQLALCHEMY_DATABASE_URI'] = (
-    "mysql+pymysql://avnadmin:AVNS_y0u5KAzmwb8QQPbGSxN@"
+    f"mysql+pymysql://avnadmin:{os.getenv('DB_PASSWORD')}@"
     "saidata-colimarl-14a4.c.aivencloud.com:18883/defaultdb?charset=utf8mb4"
 )
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
