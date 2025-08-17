@@ -18,12 +18,10 @@ DB_HOST = 'saidata-colimarl-14a4.c.aivencloud.com'
 DB_PORT = 18883
 DB_NAME = 'defaultdb'
 
-# Add SSL options for Aiven
 app.config['SQLALCHEMY_DATABASE_URI'] = (
     f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    "?charset=utf8mb4&ssl_ca=/etc/ssl/certs/ca-certificates.crt"
+    "?charset=utf8mb4&ssl_disabled=true"
 )
-
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB max
 
