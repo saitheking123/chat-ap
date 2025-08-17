@@ -1,6 +1,8 @@
+# --- MUST be first ---
 import eventlet
-eventlet.monkey_patch()  # MUST b
+eventlet.monkey_patch()  # Fix WebSocket compatibility with Eventlet
 
+# --- Imports ---
 import os
 from flask import Flask, render_template, request, send_file, jsonify
 from flask_socketio import SocketIO, emit
@@ -9,10 +11,9 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 from io import BytesIO
 
-  # Fix for WebSockets with eventlet
-
 # --- Config ---
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 
@@ -31,7 +32,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB max
 
 db = SQLAlchemy(app)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")  # Use eventlet
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 # --- Models ---
 class Message(db.Model):
@@ -101,6 +102,7 @@ def history():
         })
     return jsonify(result)
 
+# --- SocketIO ---
 @socketio.on('message')
 def handle_message(data):
     user = data.get('user', 'Anonymous')
@@ -116,7 +118,19 @@ def handle_message(data):
         'timestamp': msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')
     }
     emit('message', payload, broadcast=True)
+@socketio.on('connect')
+def handle_connect():
+    messages = Message.query.order_by(Message.timestamp).all()
+    for m in messages:
+        emit('message', {
+            'user': m.user,
+            'text': m.text,
+            'image_url': f"/image/{m.id}" if m.image_data else None,
+            'timestamp': m.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        })
+    
 
+# --- Run ---
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     socketio.run(app, host="0.0.0.0", port=port)
