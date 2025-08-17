@@ -167,7 +167,8 @@
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
 <script>
-    var socket = io();
+    // Connect to your hosted server
+    var socket = io('https://chat-ap-43mk.onrender.com/'); // ← change this
     var messages = document.getElementById('messages');
     var input = document.getElementById('input');
     var form = document.getElementById('input-area');
@@ -202,9 +203,6 @@
             bubble.textContent = '';
             bubble.appendChild(img);
         }
-        var user = document.createElement('div');
-        user.className = 'username';
-        user.textContent = m.user;
         if (m.user === me) {
             row.appendChild(bubble);
             row.appendChild(avatar);
@@ -212,8 +210,6 @@
             row.appendChild(avatar);
             row.appendChild(bubble);
         }
-        // Optionally show username under the bubble for group chat:
-        // row.appendChild(user);
         messages.appendChild(row);
         messages.scrollTop = messages.scrollHeight;
     }
@@ -249,5 +245,3 @@
         });
     };
 </script>
-</body>
-</html>
