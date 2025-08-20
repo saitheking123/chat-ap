@@ -22,7 +22,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # --- MySQL / SQLAlchemy ---
 DB_USER = 'avnadmin'
-DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = 'saidata-colimarl-14a4.c.aivencloud.com'
 DB_PORT = 18883
 DB_NAME = 'defaultdb'
@@ -35,10 +35,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'connect_args': {
         'ssl': {
-            'ca': 'ca.pem'
+            'ca': os.path.join(os.path.dirname(__file__), "certs", "ca.pem")
         }
     }
 }
+
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB max
 
 db = SQLAlchemy(app)
